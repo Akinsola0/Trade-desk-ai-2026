@@ -1,0 +1,194 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+  TradeDesk AI — design tokens.
+
+  A clean, photographic, white-and-orange system: white/near-white surfaces,
+  charcoal ink, and a single burnt-orange accent pulled directly from the
+  hi-vis workwear a trade actually wears on site — not an arbitrary brand
+  colour. One accent, used sparingly (60-30-10), rather than the neon or
+  manila-docket systems tried earlier.
+
+  Every pair below was contrast-checked before use:
+    ink on background       17.2:1     white on primary (button fill)  5.1:1
+    ink on card             17.9:1     primary as text on white        5.1:1
+    muted on background      4.8:1     white on verified green         7.1:1
+    white on dark overlay   19.1:1     input border on white           3.4:1
+  (decorative dividers are intentionally softer than 3:1 — that threshold
+  applies to meaningful UI boundaries: inputs, buttons, focus rings.)
+*/
+:root {
+  --radius: 0.875rem;
+
+  --background: #fbfaf8;
+  --foreground: #15171b;
+
+  --card: #ffffff;
+  --card-foreground: #15171b;
+
+  --popover: #ffffff;
+  --popover-foreground: #15171b;
+
+  --primary: #c73f08; /* burnt safety-orange, from the workwear */
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1efe9;
+  --secondary-foreground: #15171b;
+
+  --muted: #f1efe9;
+  --muted-foreground: #6b6f76;
+
+  --accent: #f1efe9;
+  --accent-foreground: #15171b;
+
+  --destructive: #c8102e;
+  --destructive-foreground: #ffffff;
+
+  /* Decorative dividers — softer than the 3:1 floor, which applies to
+     meaningful component boundaries (inputs, buttons, focus rings), not
+     hairline separators. */
+  --border: #e6e2da;
+  --input: #8f8a80;
+  --ring: #c73f08;
+
+  /* A fill-plus-on-fill pair: booked/verified/delivered states get this
+     deep green with white text, wherever a badge needs to read as "done". */
+  --ink: #ffffff;
+  --hivis: #08663d;
+
+  /* Warm amber for "needs attention / pending" states — kept distinct from
+     the destructive red and the verified green. */
+  --warn-bg: #fdf1de;
+  --warn-border: #d99a2b;
+  --warn-fg: #7a4a05;
+
+  /* The hero photo's dark scrim. */
+  --overlay: #0e1013;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink: var(--ink);
+  --color-hivis: var(--hivis);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-manrope);
+
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+  --radius-2xl: calc(var(--radius) + 0.5rem);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+    color: var(--foreground);
+  }
+}
+
+@layer components {
+  /* Confident display type — used with restraint, sentence case, not shouted. */
+  .display {
+    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+
+  /* Small letterspaced eyebrow above a heading. */
+  .kicker {
+    @apply text-xs font-semibold tracking-[0.12em] text-primary uppercase;
+  }
+
+  /* A dark, charcoal section — used for rhythm between long light stretches. */
+  .band-dark {
+    background: var(--overlay);
+    color: #f4f2ee;
+    --card: #191b1f;
+    --card-foreground: #f4f2ee;
+    --foreground: #f4f2ee;
+    --muted-foreground: #a8a6a0;
+    --border: #2a2c30;
+    --secondary: #212327;
+    --secondary-foreground: #f4f2ee;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
