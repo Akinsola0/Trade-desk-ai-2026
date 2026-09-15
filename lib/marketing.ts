@@ -143,22 +143,29 @@ export const comparisonRows: ComparisonRow[] = [
   },
 ];
 
+/**
+ * The homepage's "how it works" explainer — written for the homeowner
+ * finding a tradesman, not the tradesman being found. Every step describes
+ * a real, shipped part of the "find a tradesman" chat and its match-request
+ * flow (see `components/marketplace/find-tradesman-chat.tsx` and
+ * `lib/api/match-requests.ts`), not aspirational copy.
+ */
 export const howItWorksSteps = [
   {
-    title: "Your phone rings and you're on a job",
-    body: "Divert your number to TradeDesk AI — or send it every call after three rings. Nothing changes about the number your customers already have.",
+    title: "Tell us what's wrong",
+    body: "A leaking tap, a broken socket, a boiler on the blink — describe it in your own words, with your Eircode and when suits you. No forms, no jargon, no guessing a category.",
   },
   {
-    title: "The AI answers like a receptionist who knows plumbing",
-    body: "It asks what's wrong, how urgent it is, and where the job is. Emergencies get flagged, tyre-kickers and sales calls don't get through.",
+    title: "We match you to the right tradesman",
+    body: "Not just whoever's nearest. We weigh the job against real reviews, response times and who actually does this kind of work, and recommend verified tradespeople best fit for it.",
   },
   {
-    title: "It books the job into hours you actually work",
-    body: "It only offers slots inside your working hours, and it can't double-book you. The customer gets a WhatsApp or SMS confirmation before they hang up.",
+    title: "Confirm your pick, hear back fast",
+    body: "Send your details straight to the tradesman you choose. No five phone calls, no leaving your number and hoping — most reply within minutes on WhatsApp or SMS.",
   },
   {
-    title: "You see the lead before you're back in the van",
-    body: "Every call, lead and booked job lands in one dashboard, with a summary of what was said. Got a call wrong? Correct it in one click.",
+    title: "Can't make it? We've already asked the next",
+    body: "If your first choice isn't free, the job's automatically offered to the next best match — you'll hear who's coming instead, never just silence.",
   },
 ];
 

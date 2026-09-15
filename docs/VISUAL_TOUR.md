@@ -58,6 +58,8 @@ Real, attributed reviews pulled via [`getFeaturedReviews()`](../lib/api/marketpl
 
 **File:** [`components/marketing/how-it-works.tsx`](../components/marketing/how-it-works.tsx)
 
+Four steps written for the homeowner, not the tradesman: describe the job, get matched to a verified tradesperson (not just whoever's nearest), confirm and hear back fast, and — if that tradesman can't take it — the job's automatically offered to the next best match instead of leaving the homeowner stuck. Every step names a real, shipped part of the "find a tradesman" chat and its match-request/fallback flow (see the Marketplace section below and `docs/api-contract.md`'s "Match requests" section), not aspirational copy. The footer's "I am a tradesman" column no longer links here, since this section stopped being about them; it previously did (`/#how-it-works`).
+
 ### Cost comparison
 
 ![Cost comparison](screenshots/cost-comparison.png)

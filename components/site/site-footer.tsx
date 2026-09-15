@@ -10,9 +10,8 @@ const homeownerLinks = [
 ];
 
 const tradeLinks = [
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/#pricing", label: "Pricing" },
   { href: "/#compare", label: "Cost of a missed call" },
+  { href: "/#pricing", label: "Pricing" },
   { href: "/signup", label: "Create an account" },
 ];
 
