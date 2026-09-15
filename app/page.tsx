@@ -4,7 +4,6 @@ import { CtaBand } from "@/components/marketing/cta-band";
 import { Faq } from "@/components/marketing/faq";
 import { Hero } from "@/components/marketing/hero";
 import { HowItWorks } from "@/components/marketing/how-it-works";
-import { Pricing } from "@/components/marketing/pricing";
 import { Reviews } from "@/components/marketing/reviews";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -26,7 +25,6 @@ export default async function HomePage() {
         <Reviews reviews={reviews} />
         <HowItWorks />
         <CostComparison />
-        <Pricing />
         <Faq />
         <CtaBand />
       </main>

@@ -11,7 +11,6 @@ const homeownerLinks = [
 
 const tradeLinks = [
   { href: "/#compare", label: "Cost of a missed call" },
-  { href: "/#pricing", label: "Pricing" },
   { href: "/signup", label: "Create an account" },
 ];
 

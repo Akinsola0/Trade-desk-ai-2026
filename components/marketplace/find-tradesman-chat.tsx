@@ -299,12 +299,13 @@ export function FindTradesmanChat({
               </p>
               {results.length > 0 ? (
                 <ul className="space-y-3">
-                  {results.map((listing) => (
+                  {results.map((listing, index) => (
                     <li key={listing.slug}>
                       <ListingCard
                         listing={listing}
                         icon={iconForCategory(listing.categories, categories)}
                         hrefSuffix={buildPrefillSuffix(listing.slug)}
+                        dark={index % 2 === 1}
                       />
                     </li>
                   ))}

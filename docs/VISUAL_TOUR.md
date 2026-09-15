@@ -60,6 +60,8 @@ Real, attributed reviews pulled via [`getFeaturedReviews()`](../lib/api/marketpl
 
 Four steps written for the homeowner, not the tradesman: describe the job, get matched to a verified tradesperson (not just whoever's nearest), confirm and hear back fast, and — if that tradesman can't take it — the job's automatically offered to the next best match instead of leaving the homeowner stuck. Every step names a real, shipped part of the "find a tradesman" chat and its match-request/fallback flow (see the Marketplace section below and `docs/api-contract.md`'s "Match requests" section), not aspirational copy. The footer's "I am a tradesman" column no longer links here, since this section stopped being about them; it previously did (`/#how-it-works`).
 
+Sits on the same olive-gradient background as `AudienceSplit`'s business panel (`linear-gradient(160deg, #6f6535, #3f3a20)`, applied inline for the same reason that panel does — see its own section above), with each step's tile carrying an actual cropped screenshot of that real screen (`public/images/how-it-works/`, a plain `<img>` rather than `next/image` — small local files that don't need responsive optimisation, and the optimizer's dev resize cache proved unreliable here) behind a small three-dot "browser chrome" strip. Because the background is lighter than `.band-dark` is tuned for, both the step tiles (`bg-white/10` rather than the token-driven `bg-card`) and their text (`text-white`/`text-white/75` rather than `text-foreground`/`text-muted-foreground`) override the cascade directly, same reasoning as that panel's own comment.
+
 ### Cost comparison
 
 ![Cost comparison](screenshots/cost-comparison.png)
@@ -67,12 +69,6 @@ Four steps written for the homeowner, not the tradesman: describe the job, get m
 **File:** [`components/marketing/cost-comparison.tsx`](../components/marketing/cost-comparison.tsx)
 
 A dark `.band-dark` section (defined in [`app/globals.css`](../app/globals.css)) showing the cost of a missed call against TradeDesk AI.
-
-### Pricing
-
-![Pricing](screenshots/pricing.png)
-
-**File:** [`components/marketing/pricing.tsx`](../components/marketing/pricing.tsx)
 
 ### FAQ
 
@@ -132,7 +128,7 @@ Reuses [`components/marketing/category-grid.tsx`](../components/marketing/catego
 
 ![Find — results](screenshots/find-results.png)
 
-Filter bar plus the results list, rendered by [`components/marketplace/search-results.tsx`](../components/marketplace/search-results.tsx) and [`components/marketplace/listing-card.tsx`](../components/marketplace/listing-card.tsx) per profile.
+Filter bar plus the results list, rendered by [`components/marketplace/search-results.tsx`](../components/marketplace/search-results.tsx) and [`components/marketplace/listing-card.tsx`](../components/marketplace/listing-card.tsx) per profile. Every other card (`dark={index % 2 === 1}`) sits on the same olive gradient as `AudienceSplit`'s business panel instead of the plain white card — a zebra stripe so a long list doesn't read as one flat wall of identical cards. `.band-dark`'s token cascade recolours the card, its badges and `TrustBlock` text automatically; the "See profile and prices" button switches to the white `invert` variant on the dark cards, same as that panel's own CTA.
 
 ### Find-a-tradesman chat
 
@@ -150,7 +146,7 @@ Each answer appears as its own fully-rounded bubble: the homeowner's in a diagon
 
 ![Chat — recommendations](screenshots/find-chat-results.png)
 
-On "Find my plumbers", [`recommendTradespeople()`](../lib/api/marketplace.ts) scores every listing in this category/location — keyword overlap between the typed issue and each listing's services, plus rating, verification, review volume, and an urgency bonus for 24/7 or fast-response businesses when "Today"/"Tomorrow" was picked — and returns the top 5, reusing the same `ListingCard` the plain filtered list uses. Once the chat has an answer, `FindAndBrowse` stops rendering the plain `SearchResults` list entirely — the two are mutually exclusive, not stacked — until "Start over" resets the chat. It's a heuristic over mock data, explicitly not real language understanding; see the `recommendTradespeople` section of [`docs/api-contract.md`](api-contract.md) for how it's meant to be replaced by a real matching/AI service later without any component changing.
+On "Find my plumbers", [`recommendTradespeople()`](../lib/api/marketplace.ts) scores every listing in this category/location — keyword overlap between the typed issue and each listing's services, plus rating, verification, review volume, and an urgency bonus for 24/7 or fast-response businesses when "Today"/"Tomorrow" was picked — and returns the top 5, reusing the same `ListingCard` the plain filtered list uses (olive-gradient alternation included). Once the chat has an answer, `FindAndBrowse` stops rendering the plain `SearchResults` list entirely — the two are mutually exclusive, not stacked — until "Start over" resets the chat. It's a heuristic over mock data, explicitly not real language understanding; see the `recommendTradespeople` section of [`docs/api-contract.md`](api-contract.md) for how it's meant to be replaced by a real matching/AI service later without any component changing.
 
 ### Public tradesman profile
 

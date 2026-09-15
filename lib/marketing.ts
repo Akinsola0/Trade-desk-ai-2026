@@ -148,24 +148,29 @@ export const comparisonRows: ComparisonRow[] = [
  * finding a tradesman, not the tradesman being found. Every step describes
  * a real, shipped part of the "find a tradesman" chat and its match-request
  * flow (see `components/marketplace/find-tradesman-chat.tsx` and
- * `lib/api/match-requests.ts`), not aspirational copy.
+ * `lib/api/match-requests.ts`), not aspirational copy — and each `image` is
+ * an actual screenshot of that real screen, not stock/placeholder art.
  */
 export const howItWorksSteps = [
   {
     title: "Tell us what's wrong",
     body: "A leaking tap, a broken socket, a boiler on the blink — describe it in your own words, with your Eircode and when suits you. No forms, no jargon, no guessing a category.",
+    image: "/images/how-it-works/step-1-tell-us.png",
   },
   {
     title: "We match you to the right tradesman",
     body: "Not just whoever's nearest. We weigh the job against real reviews, response times and who actually does this kind of work, and recommend verified tradespeople best fit for it.",
+    image: "/images/how-it-works/step-2-match.png",
   },
   {
     title: "Confirm your pick, hear back fast",
     body: "Send your details straight to the tradesman you choose. No five phone calls, no leaving your number and hoping — most reply within minutes on WhatsApp or SMS.",
+    image: "/images/how-it-works/step-3-confirm.png",
   },
   {
     title: "Can't make it? We've already asked the next",
     body: "If your first choice isn't free, the job's automatically offered to the next best match — you'll hear who's coming instead, never just silence.",
+    image: "/images/how-it-works/step-4-next.png",
   },
 ];
 

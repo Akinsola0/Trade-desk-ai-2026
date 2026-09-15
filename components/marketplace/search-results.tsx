@@ -158,11 +158,12 @@ export function SearchResults({
             available
           </p>
           <ul className="space-y-4">
-            {data.map((listing) => (
+            {data.map((listing, index) => (
               <li key={listing.slug}>
                 <ListingCard
                   listing={listing}
                   icon={iconForCategory(listing.categories, categories)}
+                  dark={index % 2 === 1}
                 />
               </li>
             ))}
