@@ -6,13 +6,13 @@ export function HowItWorks() {
       id="how-it-works"
       className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-24"
     >
-      <p className="kicker">For tradespeople</p>
+      <p className="kicker">For homeowners</p>
       <h2 className="display mt-3 max-w-3xl text-3xl sm:text-4xl">
-        An AI front desk that knows what a zone valve is
+        The tradesman finder that never leaves you hanging
       </h2>
       <p className="text-muted-foreground mt-3 max-w-xl">
-        No apps for your customers to download, no new number, no receptionist
-        to train. You divert your calls and get on with the job.
+        No calling round, no voicemail, no wondering if anyone&apos;s coming.
+        Tell us the job once — we do the rest.
       </p>
 
       <ol className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
