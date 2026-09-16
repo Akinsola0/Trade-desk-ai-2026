@@ -60,15 +60,7 @@ Real, attributed reviews pulled via [`getFeaturedReviews()`](../lib/api/marketpl
 
 Four steps written for the homeowner, not the tradesman: describe the job, get matched to a verified tradesperson (not just whoever's nearest), confirm and hear back fast, and — if that tradesman can't take it — the job's automatically offered to the next best match instead of leaving the homeowner stuck. Every step names a real, shipped part of the "find a tradesman" chat and its match-request/fallback flow (see the Marketplace section below and `docs/api-contract.md`'s "Match requests" section), not aspirational copy. The footer's "I am a tradesman" column no longer links here, since this section stopped being about them; it previously did (`/#how-it-works`).
 
-Sits on the same olive-gradient background as `AudienceSplit`'s business panel (`linear-gradient(160deg, #6f6535, #3f3a20)`, applied inline for the same reason that panel does — see its own section above), with each step's tile carrying an actual cropped screenshot of that real screen (`public/images/how-it-works/`, a plain `<img>` rather than `next/image` — small local files that don't need responsive optimisation, and the optimizer's dev resize cache proved unreliable here) behind a small three-dot "browser chrome" strip. Because the background is lighter than `.band-dark` is tuned for, both the step tiles (`bg-white/10` rather than the token-driven `bg-card`) and their text (`text-white`/`text-white/75` rather than `text-foreground`/`text-muted-foreground`) override the cascade directly, same reasoning as that panel's own comment.
-
-### Cost comparison
-
-![Cost comparison](screenshots/cost-comparison.png)
-
-**File:** [`components/marketing/cost-comparison.tsx`](../components/marketing/cost-comparison.tsx)
-
-A dark `.band-dark` section (defined in [`app/globals.css`](../app/globals.css)) showing the cost of a missed call against TradeDesk AI.
+A contained rounded box (like `AudienceSplit`'s business panel) rather than a full-bleed `.band-dark` section — an earlier full-width version read as too wide against the rest of the page. Same olive gradient (`linear-gradient(160deg, #6f6535, #3f3a20)`, applied inline for the same reason that panel does — see its own section above), with each step's tile carrying an actual cropped screenshot of that real screen (`public/images/how-it-works/`, a plain `<img>` rather than `next/image` — small local files that don't need responsive optimisation, and the optimizer's dev resize cache proved unreliable here) behind a small three-dot "browser chrome" strip. Because the background is lighter than `.band-dark` is tuned for, both the step tiles (`bg-white/10` rather than the token-driven `bg-card`) and their text (`text-white`/`text-white/75` rather than `text-foreground`/`text-muted-foreground`) override the cascade directly, same reasoning as that panel's own comment. The step row is also capped narrower than the box itself (`max-w-5xl`) and the cards themselves are more compact (smaller padding, badge and type) than earlier drafts.
 
 ### FAQ
 

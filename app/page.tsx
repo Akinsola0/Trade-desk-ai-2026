@@ -1,5 +1,4 @@
 import { AudienceSplit } from "@/components/marketing/audience-split";
-import { CostComparison } from "@/components/marketing/cost-comparison";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { Faq } from "@/components/marketing/faq";
 import { Hero } from "@/components/marketing/hero";
@@ -24,7 +23,6 @@ export default async function HomePage() {
         <TrustStrip />
         <Reviews reviews={reviews} />
         <HowItWorks />
-        <CostComparison />
         <Faq />
         <CtaBand />
       </main>

@@ -9,10 +9,7 @@ const homeownerLinks = [
   { href: "/find", label: "Browse every trade" },
 ];
 
-const tradeLinks = [
-  { href: "/#compare", label: "Cost of a missed call" },
-  { href: "/signup", label: "Create an account" },
-];
+const tradeLinks = [{ href: "/signup", label: "Create an account" }];
 
 const companyLinks = [
   { href: "/about", label: "About" },
