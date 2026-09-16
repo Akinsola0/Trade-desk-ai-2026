@@ -68,7 +68,7 @@ A contained rounded box (like `AudienceSplit`'s business panel) rather than a fu
 
 **File:** [`components/marketing/faq.tsx`](../components/marketing/faq.tsx)
 
-Built on the [`components/ui/accordion.tsx`](../components/ui/accordion.tsx) primitive, inside a rounded `bg-secondary` (warm cream) box rather than sitting directly on the page's off-white — the same "contained coloured block" treatment as `HowItWorks`'s olive box just above it.
+Built on the [`components/ui/accordion.tsx`](../components/ui/accordion.tsx) primitive. The section itself is `bg-secondary` (warm cream), full-bleed edge to edge rather than sitting directly on the page's off-white — unlike `HowItWorks`'s olive box just above it, which is a contained rounded card rather than full-width.
 
 ### CTA band + footer
 

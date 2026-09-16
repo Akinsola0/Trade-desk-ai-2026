@@ -8,8 +8,8 @@ import { faqs } from "@/lib/marketing";
 
 export function Faq() {
   return (
-    <section className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 md:py-24">
-      <div className="bg-secondary rounded-3xl px-6 py-10 sm:px-10 sm:py-14">
+    <section className="bg-secondary">
+      <div className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 md:py-24">
         <p className="kicker">Questions</p>
         <h2 className="display mt-3 text-3xl sm:text-4xl">
           Asked on the phone
