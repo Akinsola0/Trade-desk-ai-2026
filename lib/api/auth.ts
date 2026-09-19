@@ -1,17 +1,5 @@
 /**
- * Auth.
- *
- * Two modes, decided by whether the Supabase environment variables are set:
- *
- * - **Not set (today):** accounts are created and checked in this browser
- *   (`lib/api/mock/auth-store.ts`), so sign-up, sign-in, staying signed in and
- *   signing out all work with no backend running. Nothing leaves the machine.
- * - **Set:** the auth screens render Supabase Auth UI instead, and
- *   `getCurrentUser()` reads the Supabase session.
- *
- * TODO(backend): once `profiles` and `businesses` exist, `signUp()` should
- * create both rows (or a trigger on `auth.users` should), and `getCurrentUser()`
- * should read the real profile rather than falling back to demo values.
+ * Authentication module handling both local mock state and Supabase integration.
  */
 import {
   DEMO_ACCOUNT,
@@ -27,10 +15,7 @@ import {
 import { db } from "@/lib/api/mock/store";
 import type { AuthUser, SignInInput, SignUpInput } from "@/lib/api/types";
 
-/**
- * True while accounts live in the browser rather than in Supabase. The auth
- * screens use it to explain which mode they're in.
- */
+// True while accounts live in the browser rather than in Supabase.
 export const isDemoAuth = !(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -64,13 +49,7 @@ function toAuthUser(user: {
   };
 }
 
-/**
- * Point the mock dashboard data at whoever is signed in, so the header, the
- * business profile and the AI's introduction all use the name they signed up
- * with instead of the fixture's.
- *
- * TODO(backend): delete this. Real data comes back scoped by RLS.
- */
+// Point the mock dashboard data at whoever is signed in.
 export function applyAccountToMockData(user: AuthUser) {
   db.profile = { ...db.profile, id: user.id, name: user.name };
   db.business = {
@@ -80,12 +59,7 @@ export function applyAccountToMockData(user: AuthUser) {
   };
 }
 
-/**
- * Create an account.
- *
- * TODO(backend): `supabase.auth.signUp({ email, password, options: { data } })`,
- * then insert the `businesses` and `profiles` rows.
- */
+// Create an account using either Supabase or local storage.
 export async function signUp(input: SignUpInput): Promise<AuthUser> {
   const email = input.email.trim().toLowerCase();
 
@@ -99,6 +73,40 @@ export async function signUp(input: SignUpInput): Promise<AuthUser> {
     throw new Error("We need your name and your business name.");
   }
 
+  // ── Real Supabase path ─────────────────────────────────────────────────────
+  if (!isDemoAuth) {
+    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
+
+    // Pass metadata to Supabase for Postgres trigger automatic row creation.
+    const { data: authData, error: authError } =
+      await getSupabaseBrowserClient().auth.signUp({
+        email,
+        password: input.password,
+        options: {
+          data: {
+            name: input.name.trim(),
+            business_name: input.business_name.trim(),
+            trade_type: input.trade_type,
+          },
+        },
+      });
+
+    if (authError) throw new Error(authError.message);
+    const supabaseUser = authData.user;
+    if (!supabaseUser) throw new Error("Sign-up failed — please try again.");
+
+    // Database rows will appear after confirmation if email confirmation is enabled.
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email ?? email,
+      name: input.name.trim(),
+      business_name: input.business_name.trim(),
+      trade_type: input.trade_type,
+      created_at: supabaseUser.created_at ?? new Date().toISOString(),
+    };
+  }
+
+  // ── Demo path (no Supabase) ────────────────────────────────────────────────
   await ensureDemoAccount();
   if (findUserByEmail(email)) {
     throw new Error(
@@ -122,13 +130,45 @@ export async function signUp(input: SignUpInput): Promise<AuthUser> {
   return user;
 }
 
-/**
- * TODO(backend): `supabase.auth.signInWithPassword({ email, password })`.
- */
+
+// TODO(backend): `supabase.auth.signInWithPassword({ email, password })`.
 export async function signIn(input: SignInInput): Promise<AuthUser> {
+  const email = input.email.trim().toLowerCase();
+
+  if (!isDemoAuth) {
+    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
+    const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({
+      email,
+      password: input.password,
+    });
+
+    if (error) {
+      throw new Error("Wrong email or password.");
+    }
+
+    const supabaseUser = data.user;
+    if (!supabaseUser) {
+      throw new Error("Wrong email or password.");
+    }
+
+    const metadata = supabaseUser.user_metadata ?? {};
+    const user: AuthUser = {
+      id: supabaseUser.id,
+      email: supabaseUser.email ?? email,
+      name: (metadata.name as string) ?? supabaseUser.email ?? "There",
+      business_name: (metadata.business_name as string) ?? db.business.name,
+      trade_type:
+        (metadata.trade_type as AuthUser["trade_type"]) ??
+        db.business.trade_type,
+      created_at: supabaseUser.created_at ?? new Date().toISOString(),
+    };
+    applyAccountToMockData(user);
+    return user;
+  }
+
   await ensureDemoAccount();
 
-  const stored = findUserByEmail(input.email);
+  const stored = findUserByEmail(email);
   const hash = await hashPassword(input.password);
 
   // Same message either way, so the form can't be used to discover emails.
@@ -142,9 +182,7 @@ export async function signIn(input: SignInInput): Promise<AuthUser> {
   return user;
 }
 
-/**
- * TODO(backend): `supabase.auth.signOut()`.
- */
+// TODO(backend): `supabase.auth.signOut()`.
 export async function signOut(): Promise<void> {
   endSession();
 
@@ -154,11 +192,7 @@ export async function signOut(): Promise<void> {
   }
 }
 
-/**
- * The signed-in account, or `null`. Used to gate the dashboard.
- *
- * TODO(backend): `supabase.auth.getUser()` plus the caller's `profiles` row.
- */
+// Get the currently signed-in account, or null.
 export async function getCurrentUser(): Promise<AuthUser | null> {
   if (typeof window === "undefined") return null;
 

@@ -17,6 +17,7 @@ import {
 import {
   DEMO_ACCOUNT,
   TRADE_TYPES,
+  isDemoAuth,
   signIn,
   signUp,
   type TradeType,
@@ -24,9 +25,7 @@ import {
 import { tradeTypeLabels } from "@/lib/labels";
 
 /**
- * Sign-up and sign-in while the app runs on demo auth: real forms, real
- * validation, accounts kept in this browser. Swapped out automatically for
- * Supabase Auth UI the moment the environment variables are set.
+ * Sign-up and sign-in forms supporting both demo auth and real Supabase accounts.
  */
 export function DemoAuthForm({ mode }: { mode: "sign_in" | "sign_up" }) {
   const router = useRouter();
@@ -195,13 +194,20 @@ export function DemoAuthForm({ mode }: { mode: "sign_in" | "sign_up" }) {
         Use the demo account
       </Button>
 
-      <p className="text-muted-foreground text-xs">
-        Accounts are stored in this browser only, so you can use the dashboard
-        before the Supabase project exists. Set{" "}
-        <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-        <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> and
-        this screen becomes real Supabase Auth, with no other change.
-      </p>
+      {isDemoAuth ? (
+        <p className="text-muted-foreground text-xs">
+          Accounts are stored in this browser only. Set{" "}
+          <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
+          <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in{" "}
+          <code className="font-mono">.env.local</code> to switch to real accounts.
+        </p>
+      ) : (
+        <p className="text-muted-foreground text-xs">
+          Your account is stored securely in Supabase. Signing up creates your
+          business profile — you can update your phone number and timezone in
+          Settings after signing in.
+        </p>
+      )}
     </div>
   );
 }
