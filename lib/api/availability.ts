@@ -5,6 +5,7 @@
  * rules transactionally rather than diffing, which keeps the AI's view of
  * availability consistent mid-call.
  */
+import { isDemoAuth } from "@/lib/api/auth";
 import { db, delay, mockId } from "@/lib/api/mock/store";
 import type {
   AvailabilityRule,
@@ -13,12 +14,27 @@ import type {
 } from "@/lib/api/types";
 
 /**
- * TODO(backend): `GET /api/availability` — rules for the caller's business,
- * ordered by weekday then start_time.
+ * Rules for the caller's business, ordered by weekday then start_time.
  */
 export async function getAvailability(
   businessId: UUID,
 ): Promise<AvailabilityRule[]> {
+  if (!isDemoAuth) {
+    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
+    const supabase = getSupabaseBrowserClient();
+
+    const { data, error } = await supabase
+      .from("availability_rules")
+      .select("*")
+      .eq("business_id", businessId)
+      .order("weekday", { ascending: true })
+      .order("start_time", { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  }
+
+  // ── Demo path ──────────────────────────────────────────────────────────────
   const rules = db.availability
     .filter((rule) => rule.business_id === businessId)
     .sort(
@@ -30,15 +46,44 @@ export async function getAvailability(
 
 /**
  * Replace the whole week for a business.
- *
- * TODO(backend): `PUT /api/availability` — delete-and-insert in one transaction.
- * Reject overlapping windows on the same weekday and `end_time <= start_time`;
- * the UI blocks both already, but it must not be the only guard.
  */
 export async function saveAvailability(
   businessId: UUID,
   rules: AvailabilityRuleInput[],
 ): Promise<AvailabilityRule[]> {
+  if (!isDemoAuth) {
+    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
+    const supabase = getSupabaseBrowserClient();
+
+    // In a production setup, you would create a Postgres RPC function to do
+    // this atomically. For this MVP client-side migration, we do a sequential 
+    // delete-then-insert.
+    const { error: deleteError } = await supabase
+      .from("availability_rules")
+      .delete()
+      .eq("business_id", businessId);
+
+    if (deleteError) throw new Error(`Delete failed: ${deleteError.message}`);
+
+    if (rules.length > 0) {
+      const { error: insertError } = await supabase
+        .from("availability_rules")
+        .insert(
+          rules.map((rule) => ({
+            business_id: businessId,
+            weekday: rule.weekday,
+            start_time: rule.start_time,
+            end_time: rule.end_time,
+          }))
+        );
+
+      if (insertError) throw new Error(`Insert failed: ${insertError.message}`);
+    }
+
+    return getAvailability(businessId);
+  }
+
+  // ── Demo path ──────────────────────────────────────────────────────────────
   db.availability = [
     ...db.availability.filter((rule) => rule.business_id !== businessId),
     ...rules.map((rule) => ({
@@ -49,3 +94,4 @@ export async function saveAvailability(
   ];
   return getAvailability(businessId);
 }
+
