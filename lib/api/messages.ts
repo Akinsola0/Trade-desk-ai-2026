@@ -1,4 +1,5 @@
 /** Confirmations and follow-ups sent over SMS or WhatsApp. */
+import { isDemoAuth } from "@/lib/api/auth";
 import { db, delay } from "@/lib/api/mock/store";
 import type { MessageChannel, MessageListItem, UUID } from "@/lib/api/types";
 
@@ -17,14 +18,56 @@ function toListItem(messageId: UUID): MessageListItem | null {
 }
 
 /**
+ * Map a Supabase row to the `MessageListItem` shape.
+ */
+function rowToMessageListItem(row: any): MessageListItem {
+  const customer = Array.isArray(row.customers) ? row.customers[0] : row.customers;
+
+  return {
+    id: row.id,
+    customer_id: row.customer_id,
+    channel: row.channel,
+    direction: row.direction,
+    body: row.body,
+    status: row.status,
+    error_message: row.error_message,
+    created_at: row.created_at,
+    customer: customer
+      ? { id: customer.id, name: customer.name, phone: customer.phone }
+      : null,
+  };
+}
+
+/**
  * Newest first. Pass a `customerId` for one customer's thread.
- *
- * TODO(backend): `GET /api/messages?customer_id=` — join `customers` so the
- * dashboard can show who a confirmation was going to.
  */
 export async function getMessages(
   customerId?: UUID,
 ): Promise<MessageListItem[]> {
+  if (!isDemoAuth) {
+    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
+    const supabase = getSupabaseBrowserClient();
+
+    let query = supabase
+      .from("messages")
+      .select(`
+        id, customer_id, channel, direction, body, status, error_message, created_at,
+        customers ( id, name, phone )
+      `)
+      .order("created_at", { ascending: false });
+
+    if (customerId) {
+      query = query.eq("customer_id", customerId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    if (!data) return [];
+
+    return data.map(rowToMessageListItem);
+  }
+
+  // ── Demo path ──────────────────────────────────────────────────────────────
   const items = db.messages
     .filter((message) =>
       customerId ? message.customer_id === customerId : true,
@@ -42,15 +85,47 @@ export async function getMessages(
 /**
  * Re-send a confirmation that failed — optionally over the other channel, which
  * is how a "no WhatsApp account" failure gets resolved without ringing anyone.
- *
- * TODO(backend): `POST /api/messages/[id]/retry` — queue through
- * `lib/messaging` and return the new row rather than mutating the failed one, so
- * the failure stays in the history.
  */
 export async function retryMessage(
   messageId: UUID,
   channel?: MessageChannel,
 ): Promise<MessageListItem> {
+  if (!isDemoAuth) {
+    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
+    const supabase = getSupabaseBrowserClient();
+
+    // 1. Fetch the failed message to duplicate it
+    const { data: current, error: fetchError } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("id", messageId)
+      .single();
+
+    if (fetchError || !current) throw new Error(`Message ${messageId} not found`);
+
+    // 2. Insert a new row for the retry so the failure stays in history
+    const { data: newRow, error: insertError } = await supabase
+      .from("messages")
+      .insert({
+        customer_id: current.customer_id,
+        channel: channel ?? current.channel,
+        direction: current.direction,
+        body: current.body,
+        status: "queued"
+      })
+      .select(`
+        id, customer_id, channel, direction, body, status, error_message, created_at,
+        customers ( id, name, phone )
+      `)
+      .single();
+
+    if (insertError) throw new Error(insertError.message);
+    if (!newRow) throw new Error("Failed to queue message");
+
+    return rowToMessageListItem(newRow);
+  }
+
+  // ── Demo path ──────────────────────────────────────────────────────────────
   const message = db.messages.find((item) => item.id === messageId);
   if (!message) throw new Error(`Message ${messageId} not found`);
 
@@ -63,3 +138,4 @@ export async function retryMessage(
   if (!updated) throw new Error(`Message ${messageId} could not be loaded`);
   return delay(updated, 400);
 }
+

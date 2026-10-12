@@ -26,10 +26,11 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsync } from "@/hooks/use-async";
-import { getMatchRequests, getSession, signOut } from "@/lib/api";
+import { getMatchRequests, getSession, signOut, isDemoAuth } from "@/lib/api";
 import { formatPhone } from "@/lib/format";
 import { tradeTypeLabels } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+import type { SessionContext } from "@/lib/api/types";
 
 function NavLinks({
   pendingRequestCount,
@@ -84,20 +85,59 @@ function NavLinks({
   );
 }
 
-/**
- * The signed-in shell. The business comes from `getSession()` — no screen ever
- * hardcodes a business id, because RLS decides which one you get.
- */
+// The signed-in shell retrieving business via getSession().
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const {
-    data: session,
-    loading,
-    error,
-  } = useAsync(useCallback(() => getSession(), []));
-  // Loaded here (not just on the requests page) so the nav badge shows
-  // pending requests before the owner ever opens the inbox.
+
+  // ── Session state ──────────────────────────────────────────────────────────
+  // Subscribe to onAuthStateChange instead of useAsync to await async token restoration.
+  const [session, setSession] = useState<SessionContext | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (isDemoAuth) {
+      getSession()
+        .then(setSession)
+        .catch((err: unknown) =>
+          setAuthError(err instanceof Error ? err : new Error(String(err)))
+        )
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    let settled = false;
+
+    import("@/lib/supabase/client").then(({ getSupabaseBrowserClient }) => {
+      const supabase = getSupabaseBrowserClient();
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, supabaseSession) => {
+          if (settled) return;
+          settled = true;
+
+          if (!supabaseSession) {
+            setLoading(false);
+            return;
+          }
+
+          try {
+            const ctx = await getSession();
+            setSession(ctx);
+          } catch (err: unknown) {
+            setAuthError(err instanceof Error ? err : new Error(String(err)));
+          } finally {
+            setLoading(false);
+          }
+        }
+      );
+
+      return () => subscription.unsubscribe();
+    });
+  }, []);
+
+  // ── Match requests (badge count) ───────────────────────────────────────────
   const { data: matchRequests } = useAsync(
     useCallback(() => getMatchRequests(), []),
   );
@@ -105,7 +145,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     matchRequests?.filter((request) => request.status === "pending").length ??
     0;
 
-  // `getSession()` throws when nobody is signed in — that is the gate.
+  // Redirect to login only after the auth state has settled and there's no session.
   const signedOut = !loading && !session;
   useEffect(() => {
     if (signedOut) router.replace("/login");
@@ -120,7 +160,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
       <main id="main" className="flex flex-1 items-center justify-center p-8">
         <p className="text-muted-foreground text-sm">
-          {error?.message ?? "You need to sign in to see that."} Taking you to
+          {authError?.message ?? "You need to sign in to see that."} Taking you to
           the sign-in screen…
         </p>
       </main>
