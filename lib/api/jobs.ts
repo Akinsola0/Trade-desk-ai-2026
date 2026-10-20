@@ -1,5 +1,6 @@
 /** Booked work — the calendar's data source. */
 import { isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay } from "@/lib/api/mock/store";
 import type {
   DateRange,
@@ -72,8 +73,7 @@ function rowToJobListItem(row: any): JobListItem {
  */
 export async function getJobs(range?: DateRange): Promise<JobListItem[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     let query = supabase
       .from("jobs")
@@ -125,8 +125,7 @@ export async function getJobs(range?: DateRange): Promise<JobListItem[]> {
  */
 async function getJob(jobId: UUID): Promise<JobListItem | null> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data, error } = await supabase
       .from("jobs")
@@ -152,8 +151,7 @@ async function getJob(jobId: UUID): Promise<JobListItem | null> {
  */
 export async function updateJob(input: UpdateJobInput): Promise<JobListItem> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const updates: Record<string, any> = {};
     if (input.status) updates.status = input.status;

@@ -1,5 +1,6 @@
 /** The call log: what the AI heard, what it decided, and how to correct it. */
 import { isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay } from "@/lib/api/mock/store";
 import type {
   CallFilters,
@@ -61,8 +62,7 @@ export async function getCalls(
   filters: CallFilters = {},
 ): Promise<CallListItem[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     let query = supabase
       .from("calls")
@@ -128,8 +128,7 @@ export async function getCalls(
  */
 async function getCall(callId: UUID): Promise<CallListItem | null> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data, error } = await supabase
       .from("calls")
@@ -154,8 +153,7 @@ export async function reclassifyCall(
   input: ReclassifyCallInput,
 ): Promise<CallListItem> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     // Fetch current call to see if outcome matches
     const current = await getCall(input.call_id);

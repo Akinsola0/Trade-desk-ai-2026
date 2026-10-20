@@ -1,5 +1,6 @@
 /** Leads captured by the AI front desk, the marketplace, or entered by hand. */
 import { getCurrentUser, isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay } from "@/lib/api/mock/store";
 import type {
   LeadFilters,
@@ -85,8 +86,7 @@ export async function getLeads(
   filters: LeadFilters = {},
 ): Promise<LeadListItem[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     let query = supabase
       .from("leads")
@@ -158,8 +158,7 @@ export async function getLeads(
 /** Fetch a single lead by ID */
 export async function getLead(leadId: UUID): Promise<LeadListItem | null> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data, error } = await supabase
       .from("leads")
@@ -186,8 +185,7 @@ export async function updateLeadStatus(
   input: UpdateLeadStatusInput,
 ): Promise<LeadListItem> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { error } = await supabase
       .from("leads")

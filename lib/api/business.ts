@@ -2,6 +2,7 @@
  * Business profile — the details the AI front desk introduces itself with.
  */
 import { getCurrentUser, isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay } from "@/lib/api/mock/store";
 import type { BusinessProfile, UpdateBusinessInput } from "@/lib/api/types";
 
@@ -29,8 +30,7 @@ function rowToProfile(row: {
 // Fetch the signed-in user's business profile securely via RLS.
 export async function getBusiness(): Promise<BusinessProfile> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data, error } = await supabase
       .from("businesses")
@@ -58,8 +58,7 @@ export async function updateBusiness(
   input: UpdateBusinessInput,
 ): Promise<BusinessProfile> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     // Step 1: find out which business this user belongs to.
     const { data: profile, error: profileError } = await supabase

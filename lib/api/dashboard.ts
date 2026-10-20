@@ -1,5 +1,6 @@
 /** Overview counters and the "needs a human" queue. */
 import { isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay } from "@/lib/api/mock/store";
 import type { AttentionItem, DashboardSummary } from "@/lib/api/types";
 
@@ -21,8 +22,7 @@ const ESTIMATED_JOB_VALUE_CENTS = 18_500;
  */
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const weekStartIso = new Date(startOfWeek()).toISOString();
 
@@ -80,8 +80,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
  */
 export async function getAttentionItems(): Promise<AttentionItem[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const items: AttentionItem[] = [];
     const dayOldIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();

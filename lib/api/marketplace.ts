@@ -22,6 +22,7 @@ import type {
   RecommendTradespeopleInput,
   SearchListingsInput,
 } from "@/lib/api/types";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 
 /** Public listings carry only the card fields — never the profile's contact details. */
 /** Exported for `lib/api/match-requests.ts`, which needs the same shape when
@@ -85,8 +86,7 @@ function mapRowToListing(row: any): MarketplaceListing {
  */
 export async function getCategories(): Promise<MarketplaceCategory[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data: profiles } = await supabase.from("tradesman_profiles").select("categories, from_price_cents");
 
@@ -119,8 +119,7 @@ export async function getCategories(): Promise<MarketplaceCategory[]> {
 /** Locations for the homepage. */
 export async function getLocations(): Promise<MarketplaceLocation[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
     // Since we don't have a locations table, we still rely on the static list but verify if they exist in DB.
     // For this MVP, simply returning the static array.
     return mockLocations;
@@ -144,8 +143,7 @@ export async function searchListings(
   input: SearchListingsInput,
 ): Promise<MarketplaceListing[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data, error } = await supabase
       .from("tradesman_profiles")
@@ -370,8 +368,7 @@ export async function getMarketplaceProfile(
   slug: string,
 ): Promise<MarketplaceProfile | null> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data, error } = await supabase
       .from("tradesman_profiles")
@@ -450,8 +447,7 @@ export async function getFeaturedReviews(
   (MarketplaceReview & { business_name: string; business_slug: string })[]
 > {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data, error } = await supabase
       .from("reviews")
@@ -519,8 +515,7 @@ export async function createMarketplaceLead(
   input: CreateMarketplaceLeadInput,
 ): Promise<CreateMarketplaceLeadResult> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     // 1. Fetch responds_within_minutes for the expected response time
     const { data: profile } = await supabase

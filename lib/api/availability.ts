@@ -6,6 +6,7 @@
  * availability consistent mid-call.
  */
 import { isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay, mockId } from "@/lib/api/mock/store";
 import type {
   AvailabilityRule,
@@ -20,8 +21,7 @@ export async function getAvailability(
   businessId: UUID,
 ): Promise<AvailabilityRule[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     const { data, error } = await supabase
       .from("availability_rules")
@@ -52,8 +52,7 @@ export async function saveAvailability(
   rules: AvailabilityRuleInput[],
 ): Promise<AvailabilityRule[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     // In a production setup, you would create a Postgres RPC function to do
     // this atomically. For this MVP client-side migration, we do a sequential 

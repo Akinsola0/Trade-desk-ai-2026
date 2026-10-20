@@ -1,5 +1,6 @@
 /** Confirmations and follow-ups sent over SMS or WhatsApp. */
 import { isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay } from "@/lib/api/mock/store";
 import type { MessageChannel, MessageListItem, UUID } from "@/lib/api/types";
 
@@ -45,8 +46,7 @@ export async function getMessages(
   customerId?: UUID,
 ): Promise<MessageListItem[]> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     let query = supabase
       .from("messages")
@@ -91,8 +91,7 @@ export async function retryMessage(
   channel?: MessageChannel,
 ): Promise<MessageListItem> {
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     // 1. Fetch the failed message to duplicate it
     const { data: current, error: fetchError } = await supabase

@@ -9,6 +9,7 @@
  * DEMO PATH: returns the in-memory mock objects as before.
  */
 import { getCurrentUser, NotSignedInError, isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay } from "@/lib/api/mock/store";
 import type { SessionContext, BusinessProfile } from "@/lib/api/types";
 
@@ -18,8 +19,7 @@ export async function getSession(): Promise<SessionContext> {
 
   // ── Real Supabase path ─────────────────────────────────────────────────────
   if (!isDemoAuth) {
-    const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
-    const supabase = getSupabaseBrowserClient();
+    const supabase = await getSupabase();
 
     // Single query: join profiles → businesses in one round-trip.
     const { data, error } = await supabase
