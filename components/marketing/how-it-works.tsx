@@ -43,7 +43,7 @@ function BrowserFrame({ src }: { src: string }) {
  * token-driven colours directly (`text-white/75`, `bg-white/10`) rather than
  * relying on the cascade — same reasoning as that panel's own comment. The
  * step row is also capped narrower than the box itself (`max-w-5xl`), so the
- * 4 cards stay compact instead of stretching to fill the full width.
+ * 4 cards stay compact instead of stretching to fill the full widthh.
  */
 export function HowItWorks() {
   return (
