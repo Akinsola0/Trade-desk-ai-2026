@@ -144,8 +144,6 @@ function review(
   return {
     id: `r-${businessId}-${reviewCounter}`,
     business_id: businessId,
-    job_id: null,
-    customer_id: `rc-${reviewCounter}`,
     rating,
     comment,
     created_at: daysAgo(days),

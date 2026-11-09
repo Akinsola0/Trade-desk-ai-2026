@@ -111,7 +111,7 @@ function RequestCard({
         {request.status === "accepted" ? (
           <div className="border-ink/20 bg-hivis/35 mt-4 rounded border p-3 text-sm">
             <p className="text-ink font-medium">
-              Booked — a confirmation was sent on{" "}
+              Booked — a confirmation is queued for{" "}
               {messageChannelLabels[request.preferred_channel]}.
             </p>
             <div className="mt-2 flex flex-wrap gap-3 text-xs">

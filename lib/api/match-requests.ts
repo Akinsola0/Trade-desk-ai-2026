@@ -2,15 +2,19 @@
  * The tradesman's Requests inbox — homeowners who confirmed this business
  * from the "find a tradesman" chat, awaiting accept/decline.
  *
- * See the `Match requests` section of docs/api-contract.md for what's real
- * here versus simulated: there's no live WhatsApp/SMS delivery, and a
- * decline's "fallback business" doesn't get its own real dashboard request
- * in this single-business demo — it's resolved immediately so the flow is
- * demoable end to end in one browser session.
+ * REAL PATH (Supabase configured): backed by the `match_requests` table and
+ * the `create_match_request` / `respond_to_match_request` functions
+ * (supabase/migrations/20261107120000_*). A decline hands the enquiry to the
+ * next fallback as a genuine pending request in THEIR inbox. Accepting queues
+ * the confirmation message; there is no SMS/WhatsApp delivery worker yet.
+ *
+ * DEMO PATH: in-memory, single business; a decline resolves instantly.
  */
+import { isDemoAuth } from "@/lib/api/auth";
+import { getSupabase } from "@/lib/supabase/isomorphic";
 import { db, delay, mockId } from "@/lib/api/mock/store";
 import { mockListings } from "@/lib/api/mock/marketplace-seed";
-import { toListing } from "@/lib/api/marketplace";
+import { getMarketplaceProfile, toListing } from "@/lib/api/marketplace";
 import type {
   CreateMatchRequestInput,
   MarketplaceListing,
@@ -19,14 +23,63 @@ import type {
   RespondToMatchRequestResult,
 } from "@/lib/api/types";
 
+const REQUEST_COLUMNS =
+  "id, business_id, customer_name, customer_phone, customer_email, customer_address, service, description, preferred_date_range, preferred_channel, status, created_at, fallback_slugs, resolved_via_slug";
+
+interface MatchRequestRow {
+  id: string;
+  business_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  customer_address: string | null;
+  service: string;
+  description: string;
+  preferred_date_range: string | null;
+  preferred_channel: MatchRequest["preferred_channel"];
+  status: MatchRequest["status"];
+  created_at: string;
+  fallback_slugs: string[];
+  resolved_via_slug: string | null;
+}
+
+function rowToMatchRequest(row: MatchRequestRow): MatchRequest {
+  return {
+    id: row.id,
+    business_id: row.business_id,
+    customer_name: row.customer_name,
+    customer_phone: row.customer_phone,
+    customer_email: row.customer_email ?? undefined,
+    customer_address: row.customer_address ?? undefined,
+    service: row.service,
+    description: row.description,
+    preferred_date_range: row.preferred_date_range ?? undefined,
+    preferred_channel: row.preferred_channel,
+    status: row.status,
+    created_at: row.created_at,
+    fallback_slugs: row.fallback_slugs ?? [],
+    resolved_via_slug: row.resolved_via_slug ?? undefined,
+  };
+}
+
 const URGENT_PATTERN = /\b(asap|as soon as possible|emergency|today|now)\b/i;
 
 /**
  * Newest first, for the signed-in business.
  *
- * TODO(backend): `GET /api/match-requests`.
  */
 export async function getMatchRequests(): Promise<MatchRequest[]> {
+  if (!isDemoAuth) {
+    const supabase = await getSupabase();
+    // RLS scopes this to the signed-in user's business.
+    const { data, error } = await supabase
+      .from("match_requests")
+      .select(REQUEST_COLUMNS)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as MatchRequestRow[]).map(rowToMatchRequest);
+  }
+
   const items = db.matchRequests
     .filter((item) => item.business_id === db.business.id)
     .sort(
@@ -39,13 +92,38 @@ export async function getMatchRequests(): Promise<MatchRequest[]> {
 /**
  * Posted when a homeowner confirms a specific tradesman from the chat's
  * recommendation list — the "Confirm this tradesman" form on `/pro/[slug]`.
- *
- * TODO(backend): `POST /api/match-requests` — public, so rate-limit it like
- * `createMarketplaceLead`.
  */
 export async function createMatchRequest(
   input: CreateMatchRequestInput,
 ): Promise<MatchRequest> {
+  if (!isDemoAuth) {
+    const supabase = await getSupabase();
+    // The function validates, normalises and rate-limits; its messages are
+    // written for the homeowner, so they are safe to show as-is.
+    const { data: id, error } = await supabase.rpc("create_match_request", {
+      p_business_id: input.business_id,
+      p_customer_name: input.customer_name,
+      p_customer_phone: input.customer_phone,
+      p_service: input.service,
+      p_description: input.description,
+      p_preferred_channel: input.preferred_channel,
+      p_customer_email: input.customer_email ?? null,
+      p_customer_address: input.customer_address ?? null,
+      p_preferred_date_range: input.preferred_date_range ?? null,
+      p_fallback_slugs: input.fallback_slugs,
+    });
+    if (error) throw new Error(error.message);
+
+    // The homeowner is anonymous and cannot read the row back (by design), so
+    // echo the input with the id the database issued.
+    return {
+      id: id as string,
+      ...input,
+      status: "pending",
+      created_at: new Date().toISOString(),
+    };
+  }
+
   const request: MatchRequest = {
     id: mockId("mr"),
     business_id: input.business_id,
@@ -89,14 +167,32 @@ export async function createMatchRequest(
  * system this would be async — the fallback business would get their own
  * pending request and might decline too — simulated as instant here since
  * this demo only has one signed-in business to actually respond as.
- *
- * TODO(backend): `POST /api/match-requests/[id]/respond` — the fallback
- * cascade and message delivery both need to move server-side; see the
- * `Match requests` section of docs/api-contract.md.
  */
 export async function respondToMatchRequest(
   input: RespondToMatchRequestInput,
 ): Promise<RespondToMatchRequestResult> {
+  if (!isDemoAuth) {
+    const supabase = await getSupabase();
+    const { error } = await supabase.rpc("respond_to_match_request", {
+      p_request_id: input.request_id,
+      p_response: input.response,
+    });
+    if (error) throw new Error(error.message);
+
+    const { data: row, error: readError } = await supabase
+      .from("match_requests")
+      .select(REQUEST_COLUMNS)
+      .eq("id", input.request_id)
+      .single();
+    if (readError) throw new Error(readError.message);
+
+    const request = rowToMatchRequest(row as MatchRequestRow);
+    const fallback = request.resolved_via_slug
+      ? ((await getMarketplaceProfile(request.resolved_via_slug)) ?? undefined)
+      : undefined;
+    return { request, fallback };
+  }
+
   const request = db.matchRequests.find((item) => item.id === input.request_id);
   if (!request) {
     throw new Error(`Match request ${input.request_id} not found`);

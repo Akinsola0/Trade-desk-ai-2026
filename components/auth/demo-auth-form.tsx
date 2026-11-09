@@ -27,7 +27,17 @@ import { tradeTypeLabels } from "@/lib/labels";
 /**
  * Sign-up and sign-in forms supporting both demo auth and real Supabase accounts.
  */
-export function DemoAuthForm({ mode }: { mode: "sign_in" | "sign_up" }) {
+export function DemoAuthForm({
+  mode,
+  next = "/dashboard",
+  notice,
+}: {
+  mode: "sign_in" | "sign_up";
+  /** Already validated by the page (`safeNextPath`) — where to go after auth. */
+  next?: string;
+  /** A message from a previous step, e.g. a failed email confirmation. */
+  notice?: string;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -36,6 +46,8 @@ export function DemoAuthForm({ mode }: { mode: "sign_in" | "sign_up" }) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<"form" | "demo" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Set once an account exists but its email still needs confirming.
+  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -43,17 +55,22 @@ export function DemoAuthForm({ mode }: { mode: "sign_in" | "sign_up" }) {
     setError(null);
     try {
       if (mode === "sign_up") {
-        await signUp({
+        const result = await signUp({
           name,
           business_name: businessName,
           trade_type: tradeType,
           email,
           password,
         });
+        if (result.requires_email_confirmation) {
+          setConfirmEmail(result.email);
+          setBusy(null);
+          return;
+        }
       } else {
         await signIn({ email, password });
       }
-      router.push("/dashboard");
+      router.push(next);
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -72,15 +89,46 @@ export function DemoAuthForm({ mode }: { mode: "sign_in" | "sign_up" }) {
         email: DEMO_ACCOUNT.email,
         password: DEMO_ACCOUNT.password,
       });
-      router.push("/dashboard");
+      router.push(next);
     } catch {
       setError("Couldn't open the demo account.");
       setBusy(null);
     }
   }
 
+  if (confirmEmail) {
+    return (
+      <div role="status" className="space-y-3">
+        <h2 className="display text-2xl">Check your email</h2>
+        <p className="text-muted-foreground text-sm">
+          We&apos;ve sent a confirmation link to{" "}
+          <span className="text-foreground font-medium">{confirmEmail}</span>.
+          Open it to finish setting up {businessName.trim() || "your business"}
+          &nbsp;— it signs you straight in.
+        </p>
+        <p className="text-muted-foreground text-xs">
+          Nothing there? Check your spam folder, or{" "}
+          <button
+            type="button"
+            className="text-primary rounded underline-offset-4 hover:underline"
+            onClick={() => setConfirmEmail(null)}
+          >
+            try a different email
+          </button>
+          .
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
+      {notice ? (
+        <p role="status" className="bg-secondary text-secondary-foreground rounded p-3 text-sm">
+          {notice}
+        </p>
+      ) : null}
+
       <form onSubmit={submit} className="space-y-4">
         {mode === "sign_up" ? (
           <>

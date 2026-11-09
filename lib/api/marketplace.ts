@@ -19,8 +19,10 @@ import type {
   MarketplaceLocation,
   MarketplaceProfile,
   MarketplaceReview,
+  MarketplaceService,
   RecommendTradespeopleInput,
   SearchListingsInput,
+  TradeType,
 } from "@/lib/api/types";
 import { getSupabase } from "@/lib/supabase/isomorphic";
 
@@ -48,31 +50,64 @@ export function toListing(profile: MockListing): MarketplaceListing {
 }
 
 /**
- * Helper to map a real Supabase joined row to the MarketplaceListing shape.
+ * Row shape of the `marketplace_listings` / `marketplace_profiles` views. These
+ * views are the public contract (supabase/migrations/20261105120100_*): they
+ * join `businesses` and aggregate `reviews` past RLS, exposing only the columns
+ * the public pages render.
  */
-function mapRowToListing(row: any): MarketplaceListing {
-  const business = Array.isArray(row.businesses) ? row.businesses[0] : row.businesses;
-  const reviews = business?.reviews || [];
-  
-  let rating = null;
-  let review_count = reviews.length;
-  if (review_count > 0) {
-    rating = reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / review_count;
-    rating = Math.round(rating * 10) / 10;
-  }
+interface ListingRow {
+  business_id: string;
+  slug: string;
+  business_name: string;
+  headline: string;
+  service_area: string;
+  photo_url: string | null;
+  town: string;
+  county: string;
+  categories: TradeType[];
+  from_price_cents: number | null;
+  verified: boolean;
+  answers_24_7: boolean;
+  responds_within_minutes: number | null;
+  review_count: number;
+  rating: number | string | null;
+  service_names: string[];
+}
 
+interface ProfileRow extends ListingRow {
+  profile_id: string;
+  bio: string;
+  phone: string;
+  photo_urls: string[] | null;
+  member_since: string;
+}
+
+const LISTING_COLUMNS =
+  "business_id, slug, business_name, headline, service_area, photo_url, town, county, " +
+  "categories, from_price_cents, verified, answers_24_7, responds_within_minutes, " +
+  "review_count, rating, service_names";
+
+const PROFILE_COLUMNS =
+  `profile_id, bio, phone, photo_urls, member_since, ${LISTING_COLUMNS}`;
+
+const REVIEW_COLUMNS =
+  "id, business_id, business_name, business_slug, rating, comment, created_at, customer_name, job_service";
+
+/** Map a `marketplace_listings` / `marketplace_profiles` row to the card shape. */
+function mapRowToListing(row: ListingRow): MarketplaceListing {
   return {
     business_id: row.business_id,
     slug: row.slug,
-    business_name: business?.name ?? "Business",
+    business_name: row.business_name,
     headline: row.headline,
     categories: row.categories,
     service_area: row.service_area,
-    photo_url: row.photo_urls?.[0] ?? null,
+    photo_url: row.photo_url,
     town: row.town,
     county: row.county,
-    rating,
-    review_count,
+    // PostgREST can serialise `numeric` as a string depending on the client.
+    rating: row.rating === null ? null : Number(row.rating),
+    review_count: row.review_count,
     from_price_cents: row.from_price_cents,
     verified: row.verified,
     answers_24_7: row.answers_24_7,
@@ -146,51 +181,42 @@ export async function searchListings(
     const supabase = await getSupabase();
 
     const { data, error } = await supabase
-      .from("tradesman_profiles")
-      .select(`
-        business_id, slug, headline, service_area, photo_urls, town, county, categories,
-        from_price_cents, verified, answers_24_7, responds_within_minutes,
-        businesses!inner ( name, reviews ( rating ) ),
-        marketplace_services ( name )
-      `);
-      
+      .from("marketplace_listings")
+      .select(LISTING_COLUMNS)
+      .contains("categories", [input.category]);
+
     if (error) throw new Error(error.message);
-    
-    let results = (data ?? []).map((row: any) => ({
-      ...mapRowToListing(row),
-      _services: row.marketplace_services ?? []
-    }));
 
     const query = input.query?.trim().toLowerCase() ?? "";
+    const loc = input.location.toLowerCase();
 
-    results = results
-      .filter((listing) => listing.categories.includes(input.category))
-      // Approximate location filter since real DB just has town and county strings
-      .filter((listing) => {
-        const loc = input.location.toLowerCase();
-        return listing.town.toLowerCase().includes(loc) || listing.county.toLowerCase().includes(loc) || loc === "all";
-      })
-      .filter((listing) =>
+    const results = ((data ?? []) as unknown as ListingRow[])
+      .map((row) => ({ listing: mapRowToListing(row), services: row.service_names }))
+      // Approximate location filter since the DB just has town and county strings
+      .filter(
+        ({ listing }) =>
+          loc === "all" ||
+          listing.town.toLowerCase().includes(loc) ||
+          listing.county.toLowerCase().includes(loc),
+      )
+      .filter(({ listing, services }) =>
         query
-          ? [
-              listing.business_name,
-              listing.headline,
-              ...(listing as any)._services.map((s: any) => s.name),
-            ]
+          ? [listing.business_name, listing.headline, ...services]
               .join(" ")
               .toLowerCase()
               .includes(query)
           : true,
       )
-      .filter((listing) =>
+      .filter(({ listing }) =>
         input.min_rating ? (listing.rating ?? 0) >= input.min_rating : true,
       )
-      .filter((listing) =>
+      .filter(({ listing }) =>
         input.max_from_price_cents
           ? (listing.from_price_cents ?? Infinity) <= input.max_from_price_cents
           : true,
       )
-      .filter((listing) => (input.answers_24_7 ? listing.answers_24_7 : true));
+      .filter(({ listing }) => (input.answers_24_7 ? listing.answers_24_7 : true))
+      .map(({ listing }) => listing);
 
     results.sort((a, b) => {
       switch (input.sort) {
@@ -207,8 +233,7 @@ export async function searchListings(
       }
     });
 
-    // Strip temp field
-    return results.map(({ _services, ...rest }: any) => rest);
+    return results;
   }
 
   // ── Demo path ──────────────────────────────────────────────────────────────
@@ -371,54 +396,38 @@ export async function getMarketplaceProfile(
     const supabase = await getSupabase();
 
     const { data, error } = await supabase
-      .from("tradesman_profiles")
-      .select(`
-        business_id, slug, headline, bio, service_area, photo_urls, town, county, categories,
-        from_price_cents, verified, answers_24_7, responds_within_minutes, member_since,
-        businesses!inner (
-          name, phone,
-          reviews (
-            id, business_id, job_id, customer_id, rating, comment, created_at,
-            customers ( name ),
-            jobs ( leads ( service ) )
-          )
-        ),
-        marketplace_services ( name, description, from_price_cents )
-      `)
+      .from("marketplace_profiles")
+      .select(PROFILE_COLUMNS)
       .eq("slug", slug)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
+    const profile = data as unknown as ProfileRow;
 
-    const baseListing = mapRowToListing(data);
-    const business = Array.isArray(data.businesses) ? data.businesses[0] : data.businesses;
-    const rawReviews = business?.reviews || [];
+    const [servicesRes, reviewsRes] = await Promise.all([
+      supabase
+        .from("marketplace_services")
+        .select("name, description, from_price_cents")
+        .eq("profile_id", profile.profile_id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("marketplace_reviews")
+        .select(REVIEW_COLUMNS)
+        .eq("business_id", profile.business_id)
+        .order("created_at", { ascending: false }),
+    ]);
 
-    const reviews: MarketplaceReview[] = rawReviews.map((r: any) => {
-      const customer = Array.isArray(r.customers) ? r.customers[0] : r.customers;
-      const job = Array.isArray(r.jobs) ? r.jobs[0] : r.jobs;
-      const lead = Array.isArray(job?.leads) ? job.leads[0] : job?.leads;
-      return {
-        id: r.id,
-        business_id: r.business_id,
-        job_id: r.job_id,
-        customer_id: r.customer_id,
-        rating: r.rating,
-        comment: r.comment,
-        created_at: r.created_at,
-        customer_name: customer?.name ?? "Customer",
-        job_service: lead?.service ?? null,
-      };
-    }).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    if (servicesRes.error) throw new Error(servicesRes.error.message);
+    if (reviewsRes.error) throw new Error(reviewsRes.error.message);
 
     return {
-      ...baseListing,
-      bio: data.bio,
-      photo_urls: data.photo_urls ?? [],
-      phone: business?.phone ?? "",
-      services: data.marketplace_services ?? [],
-      reviews,
-      member_since: data.member_since,
+      ...mapRowToListing(profile),
+      bio: profile.bio,
+      photo_urls: profile.photo_urls ?? [],
+      phone: profile.phone,
+      services: (servicesRes.data ?? []) as MarketplaceService[],
+      reviews: (reviewsRes.data ?? []) as MarketplaceReview[],
+      member_since: profile.member_since,
     };
   }
 
@@ -450,42 +459,17 @@ export async function getFeaturedReviews(
     const supabase = await getSupabase();
 
     const { data, error } = await supabase
-      .from("reviews")
-      .select(`
-        id, business_id, job_id, customer_id, rating, comment, created_at,
-        customers ( name ),
-        jobs ( leads ( service ) ),
-        businesses!inner (
-          name,
-          tradesman_profiles ( slug )
-        )
-      `)
+      .from("marketplace_reviews")
+      .select(REVIEW_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(limit);
 
     if (error || !data) return [];
 
-    return data.map((r: any) => {
-      const customer = Array.isArray(r.customers) ? r.customers[0] : r.customers;
-      const job = Array.isArray(r.jobs) ? r.jobs[0] : r.jobs;
-      const lead = Array.isArray(job?.leads) ? job.leads[0] : job?.leads;
-      const business = Array.isArray(r.businesses) ? r.businesses[0] : r.businesses;
-      const profile = Array.isArray(business?.tradesman_profiles) ? business.tradesman_profiles[0] : business?.tradesman_profiles;
-
-      return {
-        id: r.id,
-        business_id: r.business_id,
-        job_id: r.job_id,
-        customer_id: r.customer_id,
-        rating: r.rating,
-        comment: r.comment,
-        created_at: r.created_at,
-        customer_name: customer?.name ?? "Customer",
-        job_service: lead?.service ?? null,
-        business_name: business?.name ?? "Business",
-        business_slug: profile?.slug ?? "",
-      };
-    });
+    return data as unknown as (MarketplaceReview & {
+      business_name: string;
+      business_slug: string;
+    })[];
   }
 
   // ── Demo path ──────────────────────────────────────────────────────────────
@@ -522,9 +506,11 @@ export async function createMarketplaceLead(
       .from("tradesman_profiles")
       .select("responds_within_minutes")
       .eq("business_id", input.business_id)
-      .single();
+      .maybeSingle();
 
-    // 2. Call the RPC to insert customer and lead (bypassing RLS)
+    // 2. Call the RPC to insert customer and lead (bypassing RLS). The function
+    //    validates every field and rate-limits per phone and per business, so
+    //    its errors are written for the homeowner and safe to show as-is.
     const { data: leadId, error } = await supabase.rpc("create_marketplace_lead", {
       p_business_id: input.business_id,
       p_customer_name: input.customer_name,
@@ -534,6 +520,7 @@ export async function createMarketplaceLead(
       p_service: input.service,
       p_description: input.description,
       p_urgency: input.urgency,
+      p_preferred_date_range: input.preferred_date_range ?? null,
     });
 
     if (error) throw new Error(error.message);

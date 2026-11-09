@@ -93,33 +93,28 @@ export async function retryMessage(
   if (!isDemoAuth) {
     const supabase = await getSupabase();
 
-    // 1. Fetch the failed message to duplicate it
-    const { data: current, error: fetchError } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("id", messageId)
-      .single();
+    // `messages` is read-only for tenants (a client-written row could claim
+    // `delivered`). The RPC checks ownership and that the message failed, then
+    // inserts a fresh `queued` row so the failure stays in history.
+    const { data: newId, error: retryError } = await supabase.rpc("retry_message", {
+      p_message_id: messageId,
+      p_channel: channel ?? null,
+    });
 
-    if (fetchError || !current) throw new Error(`Message ${messageId} not found`);
+    if (retryError) throw new Error(retryError.message);
 
-    // 2. Insert a new row for the retry so the failure stays in history
-    const { data: newRow, error: insertError } = await supabase
+    const { data: newRow, error: fetchError } = await supabase
       .from("messages")
-      .insert({
-        customer_id: current.customer_id,
-        channel: channel ?? current.channel,
-        direction: current.direction,
-        body: current.body,
-        status: "queued"
-      })
       .select(`
         id, customer_id, channel, direction, body, status, error_message, created_at,
         customers ( id, name, phone )
       `)
+      .eq("id", newId)
       .single();
 
-    if (insertError) throw new Error(insertError.message);
-    if (!newRow) throw new Error("Failed to queue message");
+    if (fetchError || !newRow) {
+      throw new Error(fetchError?.message ?? "Failed to queue message");
+    }
 
     return rowToMessageListItem(newRow);
   }

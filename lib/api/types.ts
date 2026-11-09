@@ -330,8 +330,13 @@ export interface MarketplaceService {
   from_price_cents: number;
 }
 
-/** A review joined to the customer's display name. */
-export interface MarketplaceReview extends Review {
+/**
+ * A review as the public sees it: the reviewer is a display name ("Sarah K.")
+ * and `customer_id` / `job_id` are not exposed (see the `marketplace_reviews`
+ * view).
+ */
+export interface MarketplaceReview
+  extends Omit<Review, "customer_id" | "job_id"> {
   customer_name: string;
   job_service: string | null;
 }
@@ -553,6 +558,15 @@ export interface SignUpInput {
   trade_type: TradeType;
   email: string;
   password: string;
+}
+
+export interface SignUpResult extends AuthUser {
+  /**
+   * True when the account exists but has no session yet because the email must
+   * be confirmed first. The UI shows "check your email" instead of entering the
+   * dashboard, where the signed-out guard would bounce the user to `/login`.
+   */
+  requires_email_confirmation: boolean;
 }
 
 export interface SignInInput {

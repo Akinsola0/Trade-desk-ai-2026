@@ -91,51 +91,79 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   // ── Session state ──────────────────────────────────────────────────────────
-  // Subscribe to onAuthStateChange instead of useAsync to await async token restoration.
   const [session, setSession] = useState<SessionContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<Error | null>(null);
+  // Real-auth only. `undefined` until Supabase reports; `null` when signed out.
+  const [authUserId, setAuthUserId] = useState<string | null | undefined>(
+    undefined,
+  );
 
+  // Demo auth: one read from localStorage.
   useEffect(() => {
-    if (isDemoAuth) {
-      getSession()
-        .then(setSession)
-        .catch((err: unknown) =>
-          setAuthError(err instanceof Error ? err : new Error(String(err)))
-        )
-        .finally(() => setLoading(false));
-      return;
-    }
+    if (!isDemoAuth) return;
+    getSession()
+      .then(setSession)
+      .catch((err: unknown) =>
+        setAuthError(err instanceof Error ? err : new Error(String(err))),
+      )
+      .finally(() => setLoading(false));
+  }, []);
 
-    let settled = false;
+  // Real auth: track WHO is signed in, for the life of the shell. This also
+  // catches sign-out from another tab and a failed token refresh. The callback
+  // must stay synchronous — awaiting another Supabase call inside
+  // onAuthStateChange can deadlock the client's auth lock — so loading the
+  // profile happens in the effect below instead.
+  useEffect(() => {
+    if (isDemoAuth) return;
+
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
 
     import("@/lib/supabase/client").then(({ getSupabaseBrowserClient }) => {
-      const supabase = getSupabaseBrowserClient();
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, supabaseSession) => {
-          if (settled) return;
-          settled = true;
-
-          if (!supabaseSession) {
-            setLoading(false);
-            return;
-          }
-
-          try {
-            const ctx = await getSession();
-            setSession(ctx);
-          } catch (err: unknown) {
-            setAuthError(err instanceof Error ? err : new Error(String(err)));
-          } finally {
-            setLoading(false);
-          }
-        }
+      if (cancelled) return;
+      const {
+        data: { subscription },
+      } = getSupabaseBrowserClient().auth.onAuthStateChange(
+        (_event, supabaseSession) => {
+          setAuthUserId(supabaseSession?.user.id ?? null);
+        },
       );
-
-      return () => subscription.unsubscribe();
+      unsubscribe = () => subscription.unsubscribe();
     });
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, []);
+
+  // Real auth: load the profile + business for whoever is signed in. Token
+  // refreshes keep the same id, so they don't refetch.
+  useEffect(() => {
+    // Signed out (null) is handled by `signedOut` below; nothing to load.
+    if (isDemoAuth || !authUserId) return;
+
+    let cancelled = false;
+    getSession()
+      .then((ctx) => {
+        if (cancelled) return;
+        setSession(ctx);
+        setAuthError(null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setAuthError(err instanceof Error ? err : new Error(String(err)));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUserId]);
 
   // ── Match requests (badge count) ───────────────────────────────────────────
   const { data: matchRequests } = useAsync(
@@ -145,8 +173,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     matchRequests?.filter((request) => request.status === "pending").length ??
     0;
 
-  // Redirect to login only after the auth state has settled and there's no session.
-  const signedOut = !loading && !session;
+  // Signed out either because Supabase says so (this also covers sign-out in
+  // another tab), or because auth settled and no session could be loaded.
+  const signedOut = authUserId === null || (!loading && !session);
   useEffect(() => {
     if (signedOut) router.replace("/login");
   }, [signedOut, router]);

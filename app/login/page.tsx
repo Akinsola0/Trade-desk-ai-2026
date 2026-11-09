@@ -3,13 +3,32 @@ import Link from "next/link";
 
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { AuthPanel } from "@/components/auth/auth-panel";
+import { safeNextPath } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = {
   title: "Sign in",
   description: "Sign in to your TradeDesk AI dashboard.",
 };
 
-export default function LoginPage() {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+  // `proxy.ts` sends signed-out dashboard visitors here with ?next=…
+  const next = safeNextPath(first(params.next));
+  const notice =
+    first(params.error) === "confirmation_failed"
+      ? "That confirmation link couldn't be used here — it may have expired or been opened in a different browser. If you already confirmed your email, just sign in."
+      : undefined;
+
   return (
     <AuthLayout
       title="Sign in"
@@ -26,7 +45,7 @@ export default function LoginPage() {
         </>
       }
     >
-      <AuthPanel view="sign_in" />
+      <AuthPanel view="sign_in" next={next} notice={notice} />
     </AuthLayout>
   );
 }

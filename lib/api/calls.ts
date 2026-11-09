@@ -155,17 +155,13 @@ export async function reclassifyCall(
   if (!isDemoAuth) {
     const supabase = await getSupabase();
 
-    // Fetch current call to see if outcome matches
-    const current = await getCall(input.call_id);
-    if (!current) throw new Error(`Call ${input.call_id} not found`);
-
-    const corrected_outcome = input.outcome === current.outcome ? null : input.outcome;
-    const corrected_at = corrected_outcome ? new Date().toISOString() : null;
-
-    const { error } = await supabase
-      .from("calls")
-      .update({ corrected_outcome, corrected_at })
-      .eq("id", input.call_id);
+    // `calls` is read-only for tenants. The RPC owns the correction rules:
+    // `outcome` is never touched, re-picking the AI's original outcome clears
+    // the correction, and `corrected_at` is stamped server-side.
+    const { error } = await supabase.rpc("reclassify_call", {
+      p_call_id: input.call_id,
+      p_outcome: input.outcome,
+    });
 
     if (error) throw new Error(error.message);
 

@@ -13,7 +13,12 @@ import {
   startSession,
 } from "@/lib/api/mock/auth-store";
 import { db } from "@/lib/api/mock/store";
-import type { AuthUser, SignInInput, SignUpInput } from "@/lib/api/types";
+import type {
+  AuthUser,
+  SignInInput,
+  SignUpInput,
+  SignUpResult,
+} from "@/lib/api/types";
 
 // True while accounts live in the browser rather than in Supabase.
 export const isDemoAuth = !(
@@ -60,7 +65,7 @@ export function applyAccountToMockData(user: AuthUser) {
 }
 
 // Create an account using either Supabase or local storage.
-export async function signUp(input: SignUpInput): Promise<AuthUser> {
+export async function signUp(input: SignUpInput): Promise<SignUpResult> {
   const email = input.email.trim().toLowerCase();
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -88,6 +93,8 @@ export async function signUp(input: SignUpInput): Promise<AuthUser> {
             business_name: input.business_name.trim(),
             trade_type: input.trade_type,
           },
+          // Where the confirmation link lands; see app/auth/callback/route.ts.
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
         },
       });
 
@@ -95,7 +102,6 @@ export async function signUp(input: SignUpInput): Promise<AuthUser> {
     const supabaseUser = authData.user;
     if (!supabaseUser) throw new Error("Sign-up failed — please try again.");
 
-    // Database rows will appear after confirmation if email confirmation is enabled.
     return {
       id: supabaseUser.id,
       email: supabaseUser.email ?? email,
@@ -103,6 +109,8 @@ export async function signUp(input: SignUpInput): Promise<AuthUser> {
       business_name: input.business_name.trim(),
       trade_type: input.trade_type,
       created_at: supabaseUser.created_at ?? new Date().toISOString(),
+      // No session means the project requires email confirmation first.
+      requires_email_confirmation: authData.session === null,
     };
   }
 
@@ -127,7 +135,7 @@ export async function signUp(input: SignUpInput): Promise<AuthUser> {
   startSession(user.id);
   applyAccountToMockData(user);
 
-  return user;
+  return { ...user, requires_email_confirmation: false };
 }
 
 
